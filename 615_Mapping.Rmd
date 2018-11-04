@@ -1,0 +1,51 @@
+---
+title: "615_Mapping"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+library(leaflet)
+library(sp)
+library(magrittr)
+library(maps)
+library(htmltools)
+library(rgdal)
+library(data.table)
+library(tidyverse)
+```{r}
+# Read the food restuarant
+food<-read_csv(file="mayorsfoodcourt.csv")
+food2<-food %>% filter(CITY %in% c("Fenway")&ViolLevel=="***")
+food3<-food %>% filter(CITY %in% c("Boston", "BOSTON")&!is.na(Location)&ViolLevel=="***")
+CITY<-data.frame(na.omit(unique(food$CITY)))
+
+uniqueFood<-food3 %>% group_by(businessName,Location) %>% summarise(count=n()) %>% filter(count>70) %>%
+  separate(Location, c("lat", "long"), ", ") %>%
+  mutate(lat=gsub("\\(", "", lat), long=gsub("\\)", "", long))
+
+temp1<-!is.na(food$Location)
+a<-nrow(na.omit(food$Location))
+PercentOfNA<-nrow(na.omit(food$Location))/nrow(food$businessName)
+
+```
+```{r}
+# Create the Map
+leaflet(data = uniqueFood) %>% 
+  addTiles() %>%
+  addMarkers(~as.numeric(long), ~as.numeric(lat), popup = ~businessName, 
+             label = ~businessName) %>% 
+  setView(lng = -71.0589, lat = 42.3601, zoom = 8) %>% 
+  addProviderTiles(providers$CartoDB.Positron)
+
+```
+
+```{r}
+#1.选数字(count>70) 2. 选城市
+
+```
+
