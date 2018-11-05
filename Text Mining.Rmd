@@ -29,7 +29,7 @@ In order to better understand the functions of tidytext, we have selected two bl
 ## Chapter 1
 Plots were created to count the occurences of frequently used words in both articles. The biggest suprise for the second article is that "p-value" was not on the list, but because of the hyphen and the common use of "value" and "values", it's count was diluted. The graph showing the corrolation of common words between the two articles show that they are not particularly comparable to eachother, with an R value of 0.45. This is not suprising, as one is much more focused on statistical theory than the other.   
 
-```{r echo = FALSE, message = FALSE}
+```{r echo = FALSE, message = FALSE,warning=FALSE}
 ### First Article
 Web1 <- read.delim2("Article1.txt")
 # break the text into individual tokens (a process called tokenization) and transform it to a tidy data structure
@@ -109,7 +109,7 @@ cor.test(
 
 A sentiment analyis was preformed on each article, indicating the progression in terms of positivity and negativity. Article 1 was longer than Article 2, and less negative, as indicated by the x- and y-axis, respectively. The second article seems to be more negative, not only because it's y-axis spans -5 to 5, as opposed to +/-4 for the first article, but in the frequency of negative bars. The second article was instructional, and did cast doubt on commonly held thoughts on p-value interpritation, but was overall was not opinionated. This negativity is likely due to the commonly word used "mean", here of course refering to average as opposed to being used as an adjective. This is a perfect illustration of the limitations of text analysis misinterpreting words and not being able to take context into account. 
 
-```{r echo = FALSE, message = FALSE}
+```{r echo = FALSE, message = FALSE,warning=FALSE}
 nrc_joy <- get_sentiments("nrc") %>%
   filter(sentiment == "joy")
 
@@ -146,7 +146,7 @@ ggplot(Article_2_sentiment, aes(index, sentiment)) +
 
 The analysis above was re-preformed comparing all of the sentiment lexicons. Again, the second article is shown to be shorter than the first article. However, the second article seems to be more positive in these results than when the net sentiment was calculated. As in the original analysi, the first article has longer stretches where no sentiment is recorded. This is likely because it contains instructions and code, which cannot be easily interprited in terms of emotion. 
 
-```{r echo = FALSE, message=FALSE}
+```{r echo = FALSE, message=FALSE,warning=FALSE}
 ### Article 1
 # calculate the sentiment in different ways
 afinn <- Web1 %>%
@@ -214,7 +214,7 @@ The most frequent words of each sentiment was presented in order of frequency in
 
 The results for the first article contains many more words than the second article, likely because it was more opinionated and not constrained by the need to use commonly known phrases related to it's topic. There seems to be an even balance of negative and positive words, and all seem to be appropriately categorized, with one exception. The word "Trump" here refers to the name of a person, not the verb. While many people have strong opinions on Donald Trump, it should be treated neutrally in this analysis. 
 
-```{r echo = FALSE, message=FALSE}
+```{r echo = FALSE, message=FALSE,warning=FALSE}
 #Article 1
 #find out how much each word contributed to each sentiment
 bing_word_counts_1<- Web1 %>%
@@ -254,7 +254,7 @@ bing_word_counts_2 %>%
 
 Word clouds for each article were created, showing both their most frequently used words and their most frequently used words that carry a sentiment. Both word clouds are unsuprising for their respective articles, and the main difference between the two that the first article repeats its words more often, as indicated by a higher frequency of large font for its word cloud. The word coulds coded for sentiment for both articles confirm what was presented in the ggplots above. 
 
-```{r echo = FALSE, message = FALSE}
+```{r echo = FALSE, message = FALSE,warning=FALSE}
 ###Wordcloud
 custom_stop_words <- bind_rows(
   data_frame(
@@ -306,7 +306,7 @@ Term frequency-inverse document frequency (tf-idf), is used to measure how impor
 
 
 
-```{r echo = FALSE, message=FALSE}
+```{r echo = FALSE, message=FALSE,warning=FALSE}
 #Combine two articles into one dataset
 Articles<- bind_rows(mutate(Web1, Webpage = "Article1"),
                        mutate(Web2, Webpage = "Article2")) %>% 
@@ -390,7 +390,7 @@ The "Article 1 'not' Bigrams" shows the word most commonly following the word 'n
 
 Bigram networks were created for each article, which indicate which commonly used words were followed by another commonly used word. Some words, such as "facebook" in the first article, were often followed by a variety of words, such as "data", "users", and "profiles". In this example, "facebook" was the center of the node, and the link connecting it to other words is the edge. In order to create a more informative graphic, arrows were added to show the direction the edge was moving, and the arrows were colored to show the weight of the bigram. The results for article 2 show that there are a few commonly used chains of words, and not many nodes. Article 1 has slightly more interesting results as there are more nodes with centers. However, there are again many numbers included, which are not meaningful.  
 
-```{r echo = FALSE, message=FALSE}
+```{r echo = FALSE, message=FALSE,warning=FALSE}
 
 Web_1 <- read.delim2("Article1.txt")
 Web_2 <- read.delim2("Article2.txt")
