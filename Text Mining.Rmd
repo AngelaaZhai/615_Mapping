@@ -1,0 +1,484 @@
+---
+title: "TextMining HW"
+author: "Kaiyu Yan"
+date: "November 2, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidytext)
+library(readr)
+library(tidytext)
+library(tidyverse)
+library(tidyr)
+library(scales)
+library(wordcloud)
+library(reshape2)
+library(igraph)
+library(ggraph)
+```
+
+
+```{r}
+#############################  Chapter1  #####################
+### First Article
+Web1 <- read.delim2("Article1.txt")
+# break the text into individual tokens (a process called tokenization) and transform it to a tidy data structure
+Web1 <- data.frame(lapply(Web1, as.character), stringsAsFactors = FALSE) %>%
+  mutate(linenumber = row_number())
+colnames(Web1) <- c("text", "linenumber")
+Web1 %>% unnest_tokens(output = word, input = text) -> Web1
+# remove stop words
+data("stop_words")
+Web1 <- Web1 %>%
+  anti_join(stop_words)
+# create a visualization of the most common words
+Web1 %>%
+  count(word, sort = TRUE) %>%
+  top_n(15) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n)) +
+  geom_col() +
+  xlab(NULL) +
+  coord_flip()
+
+### Second Article
+Web2 <- read.delim2("Article2.txt")
+# break the text into individual tokens (a process called tokenization) and transform it to a tidy data structure
+Web2 <- data.frame(lapply(Web2, as.character), stringsAsFactors = FALSE) %>%
+  mutate(linenumber = row_number())
+colnames(Web2) <- c("text", "linenumber")
+Web2 %>% unnest_tokens(output = word, input = text) -> Web2
+# remove stop words
+Web2 <- Web2 %>%
+  anti_join(stop_words)
+# create a visualization of the most common words
+Web2 %>%
+  count(word, sort = TRUE) %>%
+  top_n(15) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n)) +
+  geom_col() +
+  xlab(NULL) +
+  coord_flip()
+
+### Word Frequency
+# calculate the frequency for each word of two Articles
+frequency <- bind_rows(
+  mutate(Web1, Webpage = "Article1"),
+  mutate(Web2, Webpage = "Article2")
+) %>%
+  count(Webpage, word) %>%
+  group_by(Webpage) %>%
+  mutate(proportion = n / sum(n)) %>%
+  select(-n) %>%
+  spread(Webpage, proportion) %>%
+  gather(Webpage, proportion, Article1)
+# Comparing the word frequencies of two Articles
+ggplot(frequency, aes(x = proportion, y = Article2, color = abs(Article2 - proportion))) +
+  geom_abline(color = "black", lty = 2) +
+  geom_jitter(alpha = 0.1, size = 2.5, width = 0.3, height = 0.3) +
+  geom_text(aes(label = word), check_overlap = TRUE, vjust = 1.5) +
+  scale_x_log10(labels = percent_format()) +
+  scale_y_log10(labels = percent_format()) +
+  scale_color_gradient(limits = c(0, 0.001), low = "red", high = "blue") +
+  facet_wrap(~Webpage, ncol = 2) +
+  theme(legend.position = "none") +
+  labs(y = "Article2", x = NULL)
+# quantify how similar and different these sets of word frequencies
+cor.test(
+  data = frequency[frequency$Webpage == "Article1", ],
+  ~proportion + `Article2`
+)
+```
+
+
+```{r}
+#################   Chapter 2   ########################
+nrc_joy <- get_sentiments("nrc") %>%
+  filter(sentiment == "joy")
+
+Web1 %>%
+  inner_join(nrc_joy) %>%
+  count(word, sort = TRUE)
+Web2 %>%
+  inner_join(nrc_joy) %>%
+  count(word, sort = TRUE)
+
+Article_1_sentiment <- Web1 %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, index = linenumber, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+
+Article_2_sentiment <- Web2 %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, index = linenumber, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+
+ggplot(Article_1_sentiment, aes(index, sentiment)) +
+  geom_col(show.legend = FALSE) +
+  ggtitle("Article1")
+
+ggplot(Article_2_sentiment, aes(index, sentiment)) +
+  geom_col(show.legend = FALSE) +
+  ggtitle("Article2")
+```
+
+```{r}
+### Article 1
+# calculate the sentiment in different ways
+afinn <- Web1 %>%
+  inner_join(get_sentiments("afinn")) %>%
+  group_by(index = linenumber) %>%
+  summarise(sentiment = sum(score)) %>%
+  mutate(method = "AFINN")
+# calculate the sentiment in different ways
+bing_and_nrc <- bind_rows(
+  Web1 %>%
+    inner_join(get_sentiments("bing")) %>%
+    mutate(method = "Bing et al."),
+  Web1 %>%
+    inner_join(get_sentiments("nrc") %>%
+      filter(sentiment %in% c(
+        "positive",
+        "negative"
+      ))) %>%
+    mutate(method = "NRC")
+) %>%
+  count(method, index = linenumber, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+# bind them together and visualize
+bind_rows(afinn, bing_and_nrc) %>%
+  ggplot(aes(index, sentiment, fill = method)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~method, ncol = 1, scales = "free_y")
+
+### Article 2
+# calculate the sentiment in different ways
+afinn <- Web2 %>%
+  inner_join(get_sentiments("afinn")) %>%
+  group_by(index = linenumber) %>%
+  summarise(sentiment = sum(score)) %>%
+  mutate(method = "AFINN")
+# calculate the sentiment in different ways
+bing_and_nrc <- bind_rows(
+  Web2 %>%
+    inner_join(get_sentiments("bing")) %>%
+    mutate(method = "Bing et al."),
+  Web2 %>%
+    inner_join(get_sentiments("nrc") %>%
+      filter(sentiment %in% c(
+        "positive",
+        "negative"
+      ))) %>%
+    mutate(method = "NRC")
+) %>%
+  count(method, index = linenumber, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+# bind them together and visualize
+bind_rows(afinn, bing_and_nrc) %>%
+  ggplot(aes(index, sentiment, fill = method)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~method, ncol = 1, scales = "free_y")
+```
+
+```{r}
+#Article 1
+#find out how much each word contributed to each sentiment
+bing_word_counts_1<- Web1 %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup()
+bing_word_counts_1 %>%
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(y = "Contribution to sentiment",
+       x = NULL) +
+  coord_flip()
+
+#Article 2
+#find out how much each word contributed to each sentiment
+bing_word_counts_2<- Web2 %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup()
+bing_word_counts_2 %>%
+  group_by(sentiment) %>%
+  top_n(10) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(y = "Contribution to sentiment",
+       x = NULL) +
+  coord_flip()
+```
+
+```{r}
+###Wordcloud
+custom_stop_words <- bind_rows(
+  data_frame(
+    word = c("plot"),
+    lexicon = c("custom")
+  ),
+  stop_words
+)
+# look at the most common words in Article 1
+Web1 %>%
+  anti_join(custom_stop_words) %>%
+  count(word) %>%
+  with(wordcloud(word, n, max.words = 100))
+# look at the most common words in Article 2
+Web2 %>%
+  anti_join(custom_stop_words) %>%
+  count(word) %>%
+  with(wordcloud(word, n, max.words = 100))
+# find the most common positive and negative words in Article 1
+Web1 %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+  comparison.cloud(
+    colors = c("blue", "red"),
+    max.words = 100
+  )
+# find the most common positive and negative words in Article 2
+Web2 %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+  comparison.cloud(
+    colors = c("blue", "red"),
+    max.words = 100
+  )
+```
+
+```{r}
+############################    Chapter3   ############################
+
+#Combine two articles into one dataset
+Articles<- bind_rows(mutate(Web1, Webpage = "Article1"),
+                       mutate(Web2, Webpage = "Article2")) %>% 
+  count(Webpage, word)
+#Count the total words for each article
+total_words <- Articles %>% 
+  group_by(Webpage) %>% 
+  summarize(total = sum(n))
+
+Articles <- left_join(Articles, total_words)
+#plot the distribution of n/total for each article
+ggplot(Articles, aes(n/total, fill = Webpage)) +
+  geom_histogram(show.legend = FALSE) +
+  facet_wrap(~Webpage, ncol = 2, scales = "free_y")
+
+
+
+###Chapter 3.2
+
+freq_by_rank <- Articles %>% 
+  group_by(Webpage) %>% 
+  mutate(rank = row_number(), 
+         `term frequency` = n/total)
+
+rank_subset <- freq_by_rank %>% 
+  filter(rank < 500,
+         rank > 10)
+
+lm(log10(`term frequency`) ~ log10(rank), data = rank_subset)
+
+freq_by_rank %>% 
+  ggplot(aes(rank, `term frequency`, color = Webpage)) + 
+  geom_abline(intercept = -2.65, slope = -0.07, color = "gray50", linetype = 2) +
+  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) +   scale_x_log10() +
+  scale_y_log10()
+
+
+
+####Chapter3.3
+Articles <- Articles %>%
+  bind_tf_idf(word, Webpage, n)
+Articles %>%
+  select(-total) %>%
+  arrange(desc(tf_idf))
+Articles %>%
+  arrange(desc(tf_idf)) %>%
+  mutate(word = factor(word, levels = rev(unique(word)))) %>% 
+  group_by(Webpage) %>% 
+  top_n(15) %>% 
+  ungroup %>%
+  ggplot(aes(word, tf_idf, fill = Webpage)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = NULL, y = "tf-idf") +
+  facet_wrap(~Webpage, ncol = 2, scales = "free") +
+  coord_flip()
+
+####Chapter 3.4
+Articles <- Articles %>% bind_tf_idf(word, Webpage, n)
+Articles %>% 
+  select(-total) %>% 
+  arrange(desc(tf_idf)) %>% 
+  mutate(word = factor(word, levels = rev(unique(word)))) %>%
+  top_n(10) %>% 
+  group_by(Webpage) %>% 
+  ungroup %>% 
+  ggplot()+
+  geom_col(aes(word,tf_idf,fill=Webpage))+
+  labs(x=NULL,y="tf-idf")+
+  facet_wrap(~Webpage,nrow=2,scales = "free")+
+  coord_flip() 
+```
+
+```{r}
+#################   Chapter4   #####################
+Web_1 <- read.delim2("Article1.txt")
+Web_2 <- read.delim2("Article2.txt")
+colnames(Web_1) <- c("text")
+colnames(Web_2) <- c("text")
+
+Web1_bigrams <- Web_1 %>% unnest_tokens(bigram, text, token = "ngrams", n = 2) # for p-value article
+Web2_bigrams <- Web_2 %>% unnest_tokens(bigram, text, token = "ngrams", n = 2) # for data-story article
+
+bigrams_separated1 <- Web1_bigrams %>%
+  separate(bigram, c("word1", "word2"), sep = " ")
+bigrams_filtered1 <- bigrams_separated1 %>%
+  filter(!word1 %in% stop_words$word) %>%
+  filter(!word2 %in% stop_words$word)
+# new bigram counts:
+bigram_counts1 <- bigrams_filtered1 %>%
+  count(word1, word2, sort = TRUE)
+
+bigrams_separated2 <- Web2_bigrams %>%
+  separate(bigram, c("word1", "word2"), sep = " ")
+
+bigrams_filtered2 <- bigrams_separated2 %>%
+  filter(!word1 %in% stop_words$word) %>%
+  filter(!word2 %in% stop_words$word)
+
+# new bigram counts:
+bigram_counts2 <- bigrams_filtered2 %>%
+  count(word1, word2, sort = TRUE)
+
+
+bigrams_united1 <- bigrams_filtered1 %>%
+  unite(bigram, word1, word2, sep = " ")
+bigrams_united2 <- bigrams_filtered2 %>%
+  unite(bigram, word1, word2, sep = " ")
+bigrams_united1 %>% mutate(Webpage = "Article1") -> bigrams_united1
+bigrams_united2 %>% mutate(Webpage = "Article2") -> bigrams_united2
+
+
+total_bigrams <- rbind(bigrams_united1, bigrams_united2)
+total_bigrams %>%
+  count(Webpage, bigram) %>%
+  bind_tf_idf(bigram, Webpage, n) %>%
+  arrange(desc(tf_idf)) %>%
+  group_by(Webpage) %>%
+  top_n(5) %>%
+  ungroup() %>%
+  ggplot() +
+  geom_col(aes(bigram, tf_idf, fill = Webpage)) +
+  labs(x = NULL, y = "tf-idf") +
+  facet_wrap(~Webpage, nrow = 2, scales = "free") +
+  coord_flip()
+
+AFINN <- get_sentiments("afinn")
+
+not_words1 <- bigrams_separated1 %>%
+  filter(word1 == "not") %>%
+  inner_join(AFINN, by = c(word2 = "word")) %>%
+  count(word2, score, sort = TRUE) %>%
+  ungroup()
+not_words2 <- bigrams_separated2 %>%
+  filter(word1 == "not") %>%
+  inner_join(AFINN, by = c(word2 = "word")) %>%
+  count(word2, score, sort = TRUE) %>%
+  ungroup()
+
+not_words1 %>%
+  mutate(contribution = n * score) %>%
+  arrange(desc(abs(contribution))) %>%
+  head(20) %>%
+  mutate(word2 = reorder(word2, contribution)) %>%
+  ggplot(aes(word2, n * score, fill = n * score > 0)) +
+  geom_col(show.legend = FALSE) +
+  xlab("Words preceded by \"not\"") +
+  ylab("Sentiment score * number of occurrences") +
+  coord_flip()
+
+not_words2 %>%
+  mutate(contribution = n * score) %>%
+  arrange(desc(abs(contribution))) %>%
+  head(20) %>%
+  mutate(word2 = reorder(word2, contribution)) %>%
+  ggplot(aes(word2, n * score, fill = n * score > 0)) +
+  geom_col(show.legend = FALSE) +
+  xlab("Words preceded by \"not\"") +
+  ylab("Sentiment score * number of occurrences") +
+  coord_flip()
+
+bigram_counts1 <- bigrams_filtered1 %>%
+  count(word1, word2, sort = TRUE)
+bigram_counts2 <- bigrams_filtered2 %>%
+  count(word1, word2, sort = TRUE)
+# Wordcloud 1 for Article 1
+bigram_graph1 <- bigram_counts1 %>%
+  filter(n > 1) %>%
+  graph_from_data_frame()
+set.seed(2017)
+ggraph(bigram_graph1, layout = "fr") +
+  geom_edge_link() +
+  geom_node_point() +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1)
+# Wordcloud 2 for Article 1
+set.seed(2016)
+a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
+ggraph(bigram_graph1, layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n),
+    show.legend = FALSE,
+    arrow = a, end_cap = circle(.07, "inches")
+  ) +
+  geom_node_point(color = "lightblue", size = 5) +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
+  theme_void()
+
+# Wordcloud 1 for Article 2
+bigram_graph2 <- bigram_counts2 %>%
+  filter(n > 1) %>%
+  graph_from_data_frame()
+set.seed(2017)
+ggraph(bigram_graph2, layout = "fr") +
+  geom_edge_link() +
+  geom_node_point() +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1)
+# Wordcloud 2 for Article 2
+set.seed(2016)
+a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
+ggraph(bigram_graph2, layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n),
+    show.legend = FALSE,
+    arrow = a, end_cap = circle(.07, "inches")
+  ) +
+  geom_node_point(color = "lightblue", size = 5) +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
+  theme_void()
+```
+
+```{r}
+
+
+```
+
