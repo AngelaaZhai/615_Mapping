@@ -1,6 +1,6 @@
 ---
 title: "TextMining HW"
-author: "Kaiyu Yan"
+author: "Kaiyu Yan, Fionnuala McPeake, Angela Zhai, Miller Xu"
 date: "November 2, 2018"
 output: pdf_document
 ---
@@ -9,7 +9,7 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
+```{r echo = FALSE, message=FALSE}
 library(tidytext)
 library(readr)
 library(tidytext)
@@ -20,11 +20,16 @@ library(wordcloud)
 library(reshape2)
 library(igraph)
 library(ggraph)
+library(topicmodels)
 ```
 
+##  Introduction  
+In order to better understand the functions of tidytext, we have selected two blog posts to compare. The first article, "Reconstructing Cambridge Analytica's "Psychological Warfare Tool"" discusses how Cambridge Analytic used people's Facebook profiles in order microtarget of ads to the Trump presidential campaign, gives a simplified example of how such a thing can be done in R, and discusses the results and how they effective Cambridge Analytic targeted ads given what we have learned. The second article, "About p-values", discusses common misconseptions about p-values. These articles were selected becayse they both are of a substatnial length for a blog post, and take a stance on a topic. 
 
-```{r}
-#############################  Chapter1  #####################
+## Chapter 1
+Plots were created to count the occurences of frequently used words in both articles. The biggest suprise for the second article is that "p-value" was not on the list, but because of the hyphen and the common use of "value" and "values", it's count was diluted. The graph showing the corrolation of common words between the two articles show that they are not particularly comparable to eachother, with an R value of 0.45. This is not suprising, as one is much more focused on statistical theory than the other.   
+
+```{r echo = FALSE, message = FALSE}
 ### First Article
 Web1 <- read.delim2("Article1.txt")
 # break the text into individual tokens (a process called tokenization) and transform it to a tidy data structure
@@ -44,7 +49,9 @@ Web1 %>%
   ggplot(aes(word, n)) +
   geom_col() +
   xlab(NULL) +
-  coord_flip()
+  coord_flip()+
+  ggtitle("Article 1") +
+  theme(plot.title = element_text(hjust = 0.5))
 
 ### Second Article
 Web2 <- read.delim2("Article2.txt")
@@ -63,8 +70,10 @@ Web2 %>%
   mutate(word = reorder(word, n)) %>%
   ggplot(aes(word, n)) +
   geom_col() +
-  xlab(NULL) +
-  coord_flip()
+  ylab("Count") +
+  coord_flip()+
+  ggtitle("Article 2") +
+  theme(plot.title = element_text(hjust = 0.5))
 
 ### Word Frequency
 # calculate the frequency for each word of two Articles
@@ -96,9 +105,11 @@ cor.test(
 )
 ```
 
+##Chapter 2
 
-```{r}
-#################   Chapter 2   ########################
+A sentiment analyis was preformed on each article, indicating the progression in terms of positivity and negativity. Article 1 was longer than Article 2, and less negative, as indicated by the x- and y-axis, respectively. The second article seems to be more negative, not only because it's y-axis spans -5 to 5, as opposed to +/-4 for the first article, but in the frequency of negative bars. The second article was instructional, and did cast doubt on commonly held thoughts on p-value interpritation, but was overall was not opinionated. This negativity is likely due to the commonly word used "mean", here of course refering to average as opposed to being used as an adjective. This is a perfect illustration of the limitations of text analysis misinterpreting words and not being able to take context into account. 
+
+```{r echo = FALSE, message = FALSE}
 nrc_joy <- get_sentiments("nrc") %>%
   filter(sentiment == "joy")
 
@@ -123,14 +134,19 @@ Article_2_sentiment <- Web2 %>%
 
 ggplot(Article_1_sentiment, aes(index, sentiment)) +
   geom_col(show.legend = FALSE) +
-  ggtitle("Article1")
+  ggtitle("Article1")+
+  theme(plot.title = element_text(hjust = 0.5))
 
 ggplot(Article_2_sentiment, aes(index, sentiment)) +
   geom_col(show.legend = FALSE) +
-  ggtitle("Article2")
+  ggtitle("Article2")+
+  theme(plot.title = element_text(hjust = 0.5))
+  
 ```
 
-```{r}
+The analysis above was re-preformed comparing all of the sentiment lexicons. Again, the second article is shown to be shorter than the first article. However, the second article seems to be more positive in these results than when the net sentiment was calculated. As in the original analysi, the first article has longer stretches where no sentiment is recorded. This is likely because it contains instructions and code, which cannot be easily interprited in terms of emotion. 
+
+```{r echo = FALSE, message=FALSE}
 ### Article 1
 # calculate the sentiment in different ways
 afinn <- Web1 %>%
@@ -158,7 +174,9 @@ bing_and_nrc <- bind_rows(
 bind_rows(afinn, bing_and_nrc) %>%
   ggplot(aes(index, sentiment, fill = method)) +
   geom_col(show.legend = FALSE) +
-  facet_wrap(~method, ncol = 1, scales = "free_y")
+  facet_wrap(~method, ncol = 1, scales = "free_y")+
+   ggtitle("Article 1")+
+  theme(plot.title = element_text(hjust = 0.5))
 
 ### Article 2
 # calculate the sentiment in different ways
@@ -187,10 +205,16 @@ bing_and_nrc <- bind_rows(
 bind_rows(afinn, bing_and_nrc) %>%
   ggplot(aes(index, sentiment, fill = method)) +
   geom_col(show.legend = FALSE) +
-  facet_wrap(~method, ncol = 1, scales = "free_y")
+  facet_wrap(~method, ncol = 1, scales = "free_y")+
+    ggtitle("Article 2")+
+  theme(plot.title = element_text(hjust = 0.5))
 ```
 
-```{r}
+The most frequent words of each sentiment was presented in order of frequency in the graphs below. While some of the previous analyses have indicated that the second article is overall negative, there are more words associated with positive sentiment than negative, and one particular word, "significant", makes up the majority of the counts. As this was an instructional statistical article, the word "significant" here should take on a neutral connotation. This may explain why some lexicons rated the second article more positive than when it was not broken down into specific indexes. 
+
+The results for the first article contains many more words than the second article, likely because it was more opinionated and not constrained by the need to use commonly known phrases related to it's topic. There seems to be an even balance of negative and positive words, and all seem to be appropriately categorized, with one exception. The word "Trump" here refers to the name of a person, not the verb. While many people have strong opinions on Donald Trump, it should be treated neutrally in this analysis. 
+
+```{r echo = FALSE, message=FALSE}
 #Article 1
 #find out how much each word contributed to each sentiment
 bing_word_counts_1<- Web1 %>%
@@ -205,7 +229,7 @@ bing_word_counts_1 %>%
   ggplot(aes(word, n, fill = sentiment)) +
   geom_col(show.legend = FALSE) +
   facet_wrap(~sentiment, scales = "free_y") +
-  labs(y = "Contribution to sentiment",
+  labs(y = "Contribution to sentiment, Article 1",
        x = NULL) +
   coord_flip()
 
@@ -223,12 +247,14 @@ bing_word_counts_2 %>%
   ggplot(aes(word, n, fill = sentiment)) +
   geom_col(show.legend = FALSE) +
   facet_wrap(~sentiment, scales = "free_y") +
-  labs(y = "Contribution to sentiment",
+  labs(y = "Contribution to sentiment, Article 2",
        x = NULL) +
   coord_flip()
 ```
 
-```{r}
+Word clouds for each article were created, showing both their most frequently used words and their most frequently used words that carry a sentiment. Both word clouds are unsuprising for their respective articles, and the main difference between the two that the first article repeats its words more often, as indicated by a higher frequency of large font for its word cloud. The word coulds coded for sentiment for both articles confirm what was presented in the ggplots above. 
+
+```{r echo = FALSE, message = FALSE}
 ###Wordcloud
 custom_stop_words <- bind_rows(
   data_frame(
@@ -242,6 +268,7 @@ Web1 %>%
   anti_join(custom_stop_words) %>%
   count(word) %>%
   with(wordcloud(word, n, max.words = 100))
+
 # look at the most common words in Article 2
 Web2 %>%
   anti_join(custom_stop_words) %>%
@@ -253,7 +280,7 @@ Web1 %>%
   count(word, sentiment, sort = TRUE) %>%
   acast(word ~ sentiment, value.var = "n", fill = 0) %>%
   comparison.cloud(
-    colors = c("blue", "red"),
+    colors = c("red", "blue"),
     max.words = 100
   )
 # find the most common positive and negative words in Article 2
@@ -262,14 +289,24 @@ Web2 %>%
   count(word, sentiment, sort = TRUE) %>%
   acast(word ~ sentiment, value.var = "n", fill = 0) %>%
   comparison.cloud(
-    colors = c("blue", "red"),
+    colors = c("red", "blue"),
     max.words = 100
   )
 ```
 
-```{r}
-############################    Chapter3   ############################
 
+##Chapter3
+
+
+The term frequency distribution plots the count of the number of words who's frequency of use increases as the graph moves to the right. This results in the peak towards the left of the graph indicating the number of words that are not used very often. The results for article 1 indicate that it has more words than article 2. It also shows that it uses a greater variety of words, as there are few data points as the frequency of use increases. However, based on the results of the previously produced graphs, it is suprising that there are a few more peaks, though admitidly small ones, towards the left of the x-axis. 
+
+Zipf's law states that the frequency of a word's use is inversly proportioned to its rank. In other words, commonly used words that hold little meaning, such as "and" or "the" have a low rank, and scarcely used words have a higher rank. This would, in theory, cause a negative trend line. The two articles were graphed together, and though they overlap eachother fairly well, I would not say they are particularly comparable. The trendline is indeed negative, though the slope is not particularly steep. Both of these characteristics can be atributed to the shortness of the texts, and one being much more instructionally centered than the other. 
+
+Term frequency-inverse document frequency (tf-idf), is used to measure how important a particular word is in a document out of a colection of documents, with more weight given to infrequently used words, and less weight given to commonly used words, implementing the theory of Zipf's law. Thus, the function will find words that are common to a text, but not so common that they have little significance. The results of the Cambridge Analytica article are not suprising, and are words that any article on the topic would contain. However, some of the results of the code run in the article are present in this analysis, causing sevral numbers to be included in the results. The resutls of the second article are also appropriate for the topic, and are largely words that describe statistical terms. Both results show words that are prominent in the word cloud. The results of the tf-idf analysis can again be seen with the highest scoring words in the final plot, though it should be noted that their scales are different before once compares them. 
+
+
+
+```{r echo = FALSE, message=FALSE}
 #Combine two articles into one dataset
 Articles<- bind_rows(mutate(Web1, Webpage = "Article1"),
                        mutate(Web2, Webpage = "Article2")) %>% 
@@ -283,9 +320,9 @@ Articles <- left_join(Articles, total_words)
 #plot the distribution of n/total for each article
 ggplot(Articles, aes(n/total, fill = Webpage)) +
   geom_histogram(show.legend = FALSE) +
-  facet_wrap(~Webpage, ncol = 2, scales = "free_y")
-
-
+  facet_wrap(~Webpage, ncol = 2, scales = "free_y")+
+  ggtitle("Term Frequency Distribution")+
+  theme(plot.title = element_text(hjust = 0.5))
 
 ###Chapter 3.2
 
@@ -301,10 +338,12 @@ rank_subset <- freq_by_rank %>%
 lm(log10(`term frequency`) ~ log10(rank), data = rank_subset)
 
 freq_by_rank %>% 
-  ggplot(aes(rank, `term frequency`, color = Webpage)) + 
+  ggplot(aes(x = rank, y = `term frequency`, color = Webpage)) + 
   geom_abline(intercept = -2.65, slope = -0.07, color = "gray50", linetype = 2) +
-  geom_line(size = 1.1, alpha = 0.8, show.legend = FALSE) +   scale_x_log10() +
-  scale_y_log10()
+  geom_line(size = 1.1, alpha = 0.8, show.legend = TRUE) +   scale_x_log10() +
+  scale_y_log10()+
+    ggtitle("Zipf's Law")+
+  theme(plot.title = element_text(hjust = 0.5))
 
 
 
@@ -342,8 +381,17 @@ Articles %>%
   coord_flip() 
 ```
 
-```{r}
-#################   Chapter4   #####################
+##Chapter4
+
+
+The tf-idf analysis was repeated for bigrams. Unfortunatly, due to the example code being printed in the first article and analyzed by the text reader, many of the bigrams are numbers, and do not actually have any significance. The results of the second article are as expected. 
+
+The "Article 1 'not' Bigrams" shows the word most commonly following the word 'not'. This was repeated for article 2. The results are not particularly varied, due to the shortness of the texts. 
+
+Bigram networks were created for each article, which indicate which commonly used words were followed by another commonly used word. Some words, such as "facebook" in the first article, were often followed by a variety of words, such as "data", "users", and "profiles". In this example, "facebook" was the center of the node, and the link connecting it to other words is the edge. In order to create a more informative graphic, arrows were added to show the direction the edge was moving, and the arrows were colored to show the weight of the bigram. The results for article 2 show that there are a few commonly used chains of words, and not many nodes. Article 1 has slightly more interesting results as there are more nodes with centers. However, there are again many numbers included, which are not meaningful.  
+
+```{r echo = FALSE, message=FALSE}
+
 Web_1 <- read.delim2("Article1.txt")
 Web_2 <- read.delim2("Article2.txt")
 colnames(Web_1) <- c("text")
@@ -417,7 +465,9 @@ not_words1 %>%
   geom_col(show.legend = FALSE) +
   xlab("Words preceded by \"not\"") +
   ylab("Sentiment score * number of occurrences") +
-  coord_flip()
+  coord_flip() +
+  ggtitle("Article 1 'not' Bigrams")+
+  theme(plot.title = element_text(hjust = 0.5))
 
 not_words2 %>%
   mutate(contribution = n * score) %>%
@@ -428,7 +478,9 @@ not_words2 %>%
   geom_col(show.legend = FALSE) +
   xlab("Words preceded by \"not\"") +
   ylab("Sentiment score * number of occurrences") +
-  coord_flip()
+  coord_flip()+
+  ggtitle("Article 2 'not' Bigrams")+
+  theme(plot.title = element_text(hjust = 0.5))
 
 bigram_counts1 <- bigrams_filtered1 %>%
   count(word1, word2, sort = TRUE)
@@ -442,7 +494,9 @@ set.seed(2017)
 ggraph(bigram_graph1, layout = "fr") +
   geom_edge_link() +
   geom_node_point() +
-  geom_node_text(aes(label = name), vjust = 1, hjust = 1)
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1)+
+  ggtitle("Article 1 Bigram Network")+
+  theme(plot.title = element_text(hjust = 0.5))
 # Wordcloud 2 for Article 1
 set.seed(2016)
 a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
@@ -453,7 +507,9 @@ ggraph(bigram_graph1, layout = "fr") +
   ) +
   geom_node_point(color = "lightblue", size = 5) +
   geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
-  theme_void()
+  theme_void()+
+  ggtitle("Article 1 Weighted Bigram Network")+
+  theme(plot.title = element_text(hjust = 0.5))
 
 # Wordcloud 1 for Article 2
 bigram_graph2 <- bigram_counts2 %>%
@@ -463,7 +519,9 @@ set.seed(2017)
 ggraph(bigram_graph2, layout = "fr") +
   geom_edge_link() +
   geom_node_point() +
-  geom_node_text(aes(label = name), vjust = 1, hjust = 1)
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1)+
+  ggtitle("Article 2 Bigram Network")+
+  theme(plot.title = element_text(hjust = 0.5))
 # Wordcloud 2 for Article 2
 set.seed(2016)
 a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
@@ -474,11 +532,11 @@ ggraph(bigram_graph2, layout = "fr") +
   ) +
   geom_node_point(color = "lightblue", size = 5) +
   geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
-  theme_void()
+  theme_void()+
+  ggtitle("Article 2 Weighted Bigram Network")+
+  theme(plot.title = element_text(hjust = 0.5))
 ```
 
-```{r}
-
-
-```
+## Conclusion
+Text mining is a great way to systematically analyze and compare text documents in R. While there are limitations, such as lexicons not taking the different meanings of words into account, tidytext is still a versitile method of analysis. 
 
